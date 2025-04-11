@@ -8,7 +8,6 @@ def describe_db(engine: Engine) -> str:
     inspector = inspect(engine)
     tables_info = {}
     table_names = inspector.get_table_names()
-    print(table_names)
     for table_name in table_names:
         columns = inspector.get_columns(table_name)
 
@@ -25,6 +24,6 @@ def describe_db(engine: Engine) -> str:
     return json.dumps(tables_info, indent=4)
 
 
-def results_as_str(query: str, engine: Engine) -> str:
-    df = pl.read_database(query=query, connection=engine)
+def results_as_str(sql: str, engine: Engine) -> str:
+    df = pl.read_database(query=sql, connection=engine)
     return str(df)

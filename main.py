@@ -1,3 +1,4 @@
+from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 
@@ -13,6 +14,7 @@ class GraphState(BaseModel):
     db_description: str | None = None
     valid: bool | None = None
     results: str | None = []
+    response: str | None = None
 
 
 def validator_node(state: GraphState) -> dict[str, str]:
@@ -22,7 +24,7 @@ def validator_node(state: GraphState) -> dict[str, str]:
             "question": state.question,
         }
     )
-    return {"valid": state.valid}
+    return state.valid
 
 
 def retriever_node(state: GraphState) -> dict[str, str]:
@@ -37,17 +39,38 @@ def retriever_node(state: GraphState) -> dict[str, str]:
 
 
 def generation_node(state: GraphState) -> dict[str, str]:
-    generation = prompts.rag_chain().invoke(
+    state.response = prompts.rag_chain().invoke(
         {
             "context": state.results,
             "question": state.question,
         }
     )
-    return {"generation": generation}
+    return {"generation": state.response}
 
 
 def main():
-    print(describe_db(ENGINE))
+    pipeline = StateGraph(GraphState)
+
+    # pipeline.add_node("validator_node", validator_node)
+    pipeline.add_node("retriever_node", retriever_node)
+    pipeline.add_node("generator_node", generation_node)
+
+    # pipeline.add_edge(START, "validator_node")
+    pipeline.add_conditional_edges(
+        START,
+        validator_node,
+        {
+            "False": END,
+            "True": "retriever_node",
+        },
+    )
+    pipeline.add_edge("retriever_node", "generator_node")
+    pipeline.add_edge("generator_node", END)
+
+    rag_pipeline = pipeline.compile()
+
+    inputs = {"question": "Which artist has produced the most albums last year?"}
+    outputs = rag_pipeline.stream(inputs, stream_mode="updates")
 
 
 if __name__ == "__main__":
