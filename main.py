@@ -11,20 +11,29 @@ ENGINE_DESC = describe_db(ENGINE)
 
 class GraphState(BaseModel):
     question: str | None = None
-    db_description: str | None = None
     valid: bool | None = None
     results: str | None = []
     response: str | None = None
 
 
 def validator_node(state: GraphState) -> dict[str, str]:
-    state.valid = prompts.question_validation_chain().invoke(
+    valid = prompts.question_validation_chain().invoke(
         {
             "context": ENGINE_DESC,
             "question": state.question,
         }
     )
-    return state.valid
+    return {"valid": valid}
+
+
+def retriever_backstop(state: GraphState) -> str:
+    if state.valid:
+        return "retriever_node"
+    return "refusal_node"
+
+
+def refusal_node(state: GraphState) -> dict[str, str]:
+    return {"response": "I cannot answer that question."}
 
 
 def retriever_node(state: GraphState) -> dict[str, str]:
@@ -34,43 +43,40 @@ def retriever_node(state: GraphState) -> dict[str, str]:
             "question": state.question,
         }
     )
-    state.results = results_as_str(sql=sql, engine=ENGINE)
-    return {"results": state.results}
+    results = results_as_str(sql=sql, engine=ENGINE)
+    return {"results": results}
 
 
-def generation_node(state: GraphState) -> dict[str, str]:
-    state.response = prompts.rag_chain().invoke(
+def generator_node(state: GraphState) -> dict[str, str]:
+    response = prompts.rag_chain().invoke(
         {
             "context": state.results,
             "question": state.question,
         }
     )
-    return {"generation": state.response}
+    return {"response": response}
 
 
 def main():
     pipeline = StateGraph(GraphState)
 
-    # pipeline.add_node("validator_node", validator_node)
+    pipeline.add_node("validator_node", validator_node)
     pipeline.add_node("retriever_node", retriever_node)
-    pipeline.add_node("generator_node", generation_node)
+    pipeline.add_node("generator_node", generator_node)
+    pipeline.add_node("refusal_node", refusal_node)
 
-    # pipeline.add_edge(START, "validator_node")
-    pipeline.add_conditional_edges(
-        START,
-        validator_node,
-        {
-            "False": END,
-            "True": "retriever_node",
-        },
-    )
+    pipeline.add_edge(START, "validator_node")
+    pipeline.add_conditional_edges("validator_node", retriever_backstop)
     pipeline.add_edge("retriever_node", "generator_node")
+    pipeline.add_edge("refusal_node", END)
     pipeline.add_edge("generator_node", END)
 
     rag_pipeline = pipeline.compile()
 
-    inputs = {"question": "Which artist has produced the most albums last year?"}
-    outputs = rag_pipeline.stream(inputs, stream_mode="updates")
+    inputs = {"question": "Where is the artist 'AC/DC' from?"}
+    for event in rag_pipeline.stream(inputs, stream_mode="updates"):
+        for value in event.values():
+            print("Assistant:", value)
 
 
 if __name__ == "__main__":
