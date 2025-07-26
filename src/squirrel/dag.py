@@ -59,7 +59,7 @@ def generator_node(state: GraphState) -> dict[str, str]:
     return {"response": response}
 
 
-def answer_question(question: str, engine: Engine) -> tuple[list[dict[str, Any]], str]:
+def ask(question: str, engine: Engine) -> tuple[list[dict[str, Any]], str]:
     pipeline = StateGraph(GraphState)
 
     pipeline.add_node("validator_node", validator_node)

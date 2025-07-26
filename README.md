@@ -6,7 +6,7 @@
 Squirrel lets you query information from a SQL database using natural language.
 
 ## Internals
-Using a directed acyclic graph of calls to an LLM, it first ensures the question can be answered given a database description. It then generates a SQL query, which is refined to update time identifiers, as well as to map a categorical variable implied by the question onto the existing categories of available columnns.The query is eventually run against the database, and results are passed to a final LLM, which generates the response.
+Using a directed acyclic graph of calls to an LLM, it first ensures the question can be answered given a database description. It then generates a SQL query, which is refined to update time identifiers, as well as to map a categorical variable implied by the question onto the existing categories of available columnns. The query is eventually run against the database, and results are passed to a final LLM, which generates the response.
 
 ## Example usage
 ```python

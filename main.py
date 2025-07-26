@@ -1,12 +1,10 @@
 from sqlalchemy import create_engine
 
-from squirrel.dag import answer_question
+from squirrel.dag import ask
 
 if __name__ == "__main__":
     engine = create_engine("sqlite:///chinook.db")
-    response, debug = answer_question(
-        "What is the total number of genres in the dataset?", engine
-    )
+    response, debug = ask("What is the total number of genres in the dataset?", engine)
 
     print("Response:", response)
 
