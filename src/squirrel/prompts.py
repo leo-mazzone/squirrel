@@ -42,10 +42,9 @@ def sql_chain() -> ChatPromptTemplate:
     You are an assistant for question-answering tasks. As context, you are given a
     JSON description of all the tables available in a SQLite database. From the user's
     question, generate a valid SQL query for this database that will retrieve data
-    relevant to answer the user question. If the user question cannot be answered from
-    the database, or if the question is not about data, just say that you can't answer.
-    Only provide the raw, unformatted SQL query and nothing else! Your output should
-    start with the word "SELECT", not markdown backticks.
+    relevant to answer the user question. Only provide the raw, unformatted SQL query
+    and nothing else! Your output should start with the word "SELECT", not markdown
+    backticks.
     """
 
     human_prompt = """
@@ -69,10 +68,10 @@ def sql_chain() -> ChatPromptTemplate:
 
 def rag_chain() -> ChatPromptTemplate:
     system_prompt = """
-    You are an assistant for question-answering tasks. As context, use the following results
-    from a SQL database query, retrieved to answer the question. If you don't know the
-    answer, just say that you don't know. Use one or two sentences maximum and keep the answer
-    concise. Only provide the answer and nothing else!
+    You are an assistant for question-answering tasks. As context, use the following
+    results from a SQL database query, retrieved to answer the question. If you don't
+    know the answer, just say that you don't know. Use one or two sentences maximum and
+    keep the answer concise. Only provide the answer and nothing else!
     """
 
     human_prompt = """

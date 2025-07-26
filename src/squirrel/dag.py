@@ -1,3 +1,5 @@
+from typing import Any
+
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 from sqlalchemy import Engine
@@ -11,6 +13,7 @@ class GraphState(BaseModel):
     engine: Engine | None = None
     question: str | None = None
     valid: bool | None = None
+    sql: str | None = None
     results: str | None = []
     response: str | None = None
 
@@ -43,7 +46,7 @@ def retriever_node(state: GraphState) -> dict[str, str]:
         }
     )
     results = results_as_str(sql=sql, engine=state.engine)
-    return {"results": results}
+    return {"results": results, "sql": sql}
 
 
 def generator_node(state: GraphState) -> dict[str, str]:
@@ -56,7 +59,7 @@ def generator_node(state: GraphState) -> dict[str, str]:
     return {"response": response}
 
 
-def answer_question(question: str, engine: Engine):
+def answer_question(question: str, engine: Engine) -> tuple[list[dict[str, Any]], str]:
     pipeline = StateGraph(GraphState)
 
     pipeline.add_node("validator_node", validator_node)
@@ -73,6 +76,10 @@ def answer_question(question: str, engine: Engine):
     rag_pipeline = pipeline.compile()
 
     inputs = {"question": question, "engine": engine}
-    for event in rag_pipeline.stream(inputs, stream_mode="updates"):
-        for value in event.values():
-            print("Assistant:", value)
+    state_history = []
+    for event in rag_pipeline.stream(inputs, stream_mode="debug"):
+        state_history.append(event)
+
+    answer = dict(state_history[-1]["payload"]["result"])["response"]
+
+    return answer, state_history
