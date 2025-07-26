@@ -17,3 +17,7 @@ engine = create_engine("postgres://")
 
 print(squirrel.ask("Who was the youngest winner of an Olympic Gold Medal in athletics last year?", engine=engine))
 ```
+
+## Development
+- This project uses [just](https://github.com/casey/just/) for convenience.
+- Please run `pre-commit install`

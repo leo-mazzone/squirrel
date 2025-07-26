@@ -1,0 +1,18 @@
+repos:
+- repo: local
+  hooks:
+    # Run the ruff linter and formatter using just command
+    - id: ruff
+      name: ruff
+      description: "Format Python code using ruff format via just command"
+      entry: just format
+      language: system
+      types_or: [python, pyi]
+      pass_filenames: false
+    - id: typecheck
+      name: typecheck
+      description: "Static type checks for Python files"
+      entry: just typecheck
+      language: system
+      types_or: [python, pyi]
+      pass_filenames: false

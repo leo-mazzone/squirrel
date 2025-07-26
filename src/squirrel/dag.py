@@ -10,12 +10,12 @@ from squirrel.db import describe_db, results_as_str
 
 class GraphState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
-    engine: Engine | None = None
-    question: str | None = None
-    valid: bool | None = None
-    sql: str | None = None
-    results: str | None = []
-    response: str | None = None
+    engine: Engine
+    question: str
+    valid: bool
+    sql: str
+    results: str
+    response: str
 
 
 def validator_node(state: GraphState) -> dict[str, str]:
@@ -45,7 +45,7 @@ def retriever_node(state: GraphState) -> dict[str, str]:
             "question": state.question,
         }
     )
-    results = results_as_str(sql=sql, engine=state.engine)
+    results = results_as_str(sql=str(sql), engine=state.engine)
     return {"results": results, "sql": sql}
 
 
@@ -59,7 +59,7 @@ def generator_node(state: GraphState) -> dict[str, str]:
     return {"response": response}
 
 
-def ask(question: str, engine: Engine) -> tuple[list[dict[str, Any]], str]:
+def ask(question: str, engine: Engine) -> tuple[str, list[dict[str, Any]]]:
     pipeline = StateGraph(GraphState)
 
     pipeline.add_node("validator_node", validator_node)

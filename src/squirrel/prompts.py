@@ -2,14 +2,18 @@ from os import getenv
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
+from pydantic import SecretStr
+
+API_KEY = getenv("GEMINI_API_KEY")
 
 llm_engine = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash", google_api_key=getenv("GEMINI_API_KEY")
+    model="gemini-2.0-flash", api_key=SecretStr(API_KEY) if API_KEY else None
 )
 
 
-def question_validation_chain() -> ChatPromptTemplate:
+def question_validation_chain() -> Runnable:
     system_prompt = """
     As context, you are given a JSON description of all the tables available in a
     SQLite database, and a user question. You need to determine if the user question can
@@ -37,7 +41,7 @@ def question_validation_chain() -> ChatPromptTemplate:
     return rag_prompt | llm_engine | StrOutputParser()
 
 
-def sql_chain() -> ChatPromptTemplate:
+def sql_chain() -> Runnable:
     system_prompt = """
     You are an assistant for question-answering tasks. As context, you are given a
     JSON description of all the tables available in a SQLite database. From the user's
@@ -66,7 +70,7 @@ def sql_chain() -> ChatPromptTemplate:
     return rag_prompt | llm_engine | StrOutputParser()
 
 
-def rag_chain() -> ChatPromptTemplate:
+def rag_chain() -> Runnable:
     system_prompt = """
     You are an assistant for question-answering tasks. As context, use the following
     results from a SQL database query, retrieved to answer the question. If you don't
