@@ -4,7 +4,10 @@ import polars as pl
 from sqlalchemy import Engine, inspect
 
 
-def describe_db(engine: Engine) -> str:
+def describe_db(engine: Engine | None) -> str:
+    if not engine:
+        return "No engine."
+
     inspector = inspect(engine)
     tables_info = {}
     table_names = inspector.get_table_names()
@@ -24,6 +27,9 @@ def describe_db(engine: Engine) -> str:
     return json.dumps(tables_info, indent=4)
 
 
-def results_as_str(sql: str, engine: Engine) -> str:
+def results_as_str(sql: str, engine: Engine | None) -> str:
+    if not engine:
+        return "No engine."
+
     df = pl.read_database(query=sql, connection=engine)
     return str(df)

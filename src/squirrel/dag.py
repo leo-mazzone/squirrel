@@ -10,12 +10,12 @@ from squirrel.db import describe_db, results_as_str
 
 class GraphState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
-    engine: Engine
-    question: str
-    valid: bool
-    sql: str
-    results: str
-    response: str
+    engine: Engine | None = None
+    question: str | None = None
+    valid: bool | None = None
+    sql: str | None = None
+    results: str | None = ""
+    response: str | None = None
 
 
 def validator_node(state: GraphState) -> dict[str, str]:
