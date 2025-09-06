@@ -21,3 +21,4 @@ print(squirrel.ask("Who was the youngest winner of an Olympic Gold Medal in athl
 ## Development
 - This project uses [just](https://github.com/casey/just/) for convenience.
 - Please run `pre-commit install`
+- Built with assistance from [Claude Code](https://claude.ai/code)
