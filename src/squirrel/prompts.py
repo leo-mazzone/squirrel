@@ -6,6 +6,45 @@ from langchain_core.runnables import Runnable
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from pydantic import SecretStr
 
+
+def clean_markdown_code_blocks(text: str) -> str:
+    """
+    Remove markdown code blocks from text regardless of language.
+
+    Args:
+        text: Text that may contain markdown code blocks
+
+    Returns:
+        Cleaned text without markdown code blocks
+    """
+    text = text.strip()
+
+    # Check if text starts with ``` followed by optional language identifier
+    if text.startswith("```"):
+        # Find the first newline after the opening ```
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            # Remove everything up to and including the first newline
+            text = text[first_newline + 1 :]
+        else:
+            # No newline found, remove the opening ```
+            text = text[3:]
+
+    # Remove closing ``` if present
+    if text.endswith("```"):
+        text = text[:-3]
+
+    return text.strip()
+
+
+class CleaningStrOutputParser(StrOutputParser):
+    """String output parser that also cleans markdown code blocks."""
+
+    def parse(self, text: str) -> str:
+        """Parse the output and clean markdown code blocks."""
+        return clean_markdown_code_blocks(text)
+
+
 API_KEY = getenv("GEMINI_API_KEY")
 
 llm_engine = ChatGoogleGenerativeAI(
@@ -38,7 +77,7 @@ def question_validation_chain() -> Runnable:
         ]
     )
 
-    return rag_prompt | llm_engine | StrOutputParser()
+    return rag_prompt | llm_engine | CleaningStrOutputParser()
 
 
 def sql_chain() -> Runnable:
@@ -46,9 +85,22 @@ def sql_chain() -> Runnable:
     You are an assistant for question-answering tasks. As context, you are given a
     JSON description of all the tables available in a SQLite database. From the user's
     question, generate a valid SQL query for this database that will retrieve data
-    relevant to answer the user question. Only provide the raw, unformatted SQL query
-    and nothing else! Your output should start with the word "SELECT", not markdown
-    backticks.
+    relevant to answer the user question. 
+
+    CRITICAL: Only provide the raw, unformatted SQL query and nothing else! 
+    - Do NOT use markdown code blocks (```sql)
+    - Do NOT include any explanatory text
+    - Do NOT include any formatting
+    - Your output should start with the word "SELECT" 
+    - End your output immediately after the query
+
+    When working with date queries:
+    - Look for date/datetime columns in the database schema
+    - Use proper SQL date comparison operators (BETWEEN, >=, <=, =)
+    - For date ranges, use BETWEEN 'start_date' AND 'end_date' 
+    - For date strings, use standard ISO format 'YYYY-MM-DD'
+    - Handle both DATE and DATETIME column types appropriately
+    - If the question mentions specific date ranges, incorporate them into WHERE clauses
     """
 
     human_prompt = """
@@ -67,7 +119,7 @@ def sql_chain() -> Runnable:
         ]
     )
 
-    return rag_prompt | llm_engine | StrOutputParser()
+    return rag_prompt | llm_engine | CleaningStrOutputParser()
 
 
 def rag_chain() -> Runnable:
@@ -94,4 +146,4 @@ def rag_chain() -> Runnable:
         ]
     )
 
-    return rag_prompt | llm_engine | StrOutputParser()
+    return rag_prompt | llm_engine | CleaningStrOutputParser()

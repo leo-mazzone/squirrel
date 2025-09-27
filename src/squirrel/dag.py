@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Engine
 
 from squirrel import prompts
+from squirrel.dates import enhance_sql_prompt_with_dates, process_question_dates
 from squirrel.db import describe_db, results_as_str
 
 
@@ -12,6 +13,8 @@ class GraphState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
     engine: Engine | None = None
     question: str | None = None
+    processed_question: str | None = None
+    date_processing_info: dict[str, Any] | None = None
     valid: bool | None = None
     sql: str | None = None
     results: str | None = ""
@@ -38,15 +41,35 @@ def refusal_node(state: GraphState) -> dict[str, str]:
     return {"response": "I cannot answer that question."}
 
 
-def retriever_node(state: GraphState) -> dict[str, str]:
+def retriever_node(state: GraphState) -> dict[str, Any]:
+    # Process dates in the question first
+    if state.question is None:
+        raise ValueError("Question cannot be None in retriever_node")
+    date_info = process_question_dates(state.question)
+    processed_question = date_info["processed_question"]
+
+    # Generate additional SQL context based on identified dates
+    date_context = enhance_sql_prompt_with_dates(date_info["sql_date_filters"])
+
+    # Use processed question for SQL generation
+    sql_context = describe_db(state.engine)
+    if date_context:
+        sql_context += "\n\n" + date_context
+
     sql = prompts.sql_chain().invoke(
         {
-            "context": describe_db(state.engine),
-            "question": state.question,
+            "context": sql_context,
+            "question": processed_question,
         }
     )
     results = results_as_str(sql=str(sql), engine=state.engine)
-    return {"results": results, "sql": sql}
+
+    return {
+        "results": results,
+        "sql": sql,
+        "processed_question": processed_question,
+        "date_processing_info": date_info,
+    }
 
 
 def generator_node(state: GraphState) -> dict[str, str]:
