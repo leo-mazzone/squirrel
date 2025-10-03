@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Engine
 
 from squirrel import prompts
+from squirrel.dates import enhance_sql_prompt_with_dates, process_question_dates
 from squirrel.db import describe_db, results_as_str
 
 
@@ -12,6 +13,8 @@ class GraphState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
     engine: Engine | None = None
     question: str | None = None
+    processed_question: str | None = None
+    date_processing_info: dict[str, Any] | None = None
     valid: bool | None = None
     sql: str | None = None
     results: str | None = ""
@@ -30,7 +33,7 @@ def validator_node(state: GraphState) -> dict[str, str]:
 
 def retriever_backstop(state: GraphState) -> str:
     if state.valid:
-        return "retriever_node"
+        return "date_processing_node"
     return "refusal_node"
 
 
@@ -38,15 +41,37 @@ def refusal_node(state: GraphState) -> dict[str, str]:
     return {"response": "I cannot answer that question."}
 
 
-def retriever_node(state: GraphState) -> dict[str, str]:
+def retriever_node(state: GraphState) -> dict[str, Any]:
+    # Ensure date processing info is already available
+    if not state.date_processing_info or not state.processed_question:
+        raise ValueError(
+            "Date processing must be completed before calling retriever_node"
+        )
+
+    # Generate additional SQL context based on identified dates
+    date_context = enhance_sql_prompt_with_dates(
+        state.date_processing_info["sql_date_filters"]
+    )
+
+    # Use processed question for SQL generation
+    sql_context = describe_db(state.engine)
+    if date_context:
+        sql_context += "\n\n" + date_context
+
     sql = prompts.sql_chain().invoke(
         {
-            "context": describe_db(state.engine),
-            "question": state.question,
+            "context": sql_context,
+            "question": state.processed_question,
         }
     )
     results = results_as_str(sql=str(sql), engine=state.engine)
-    return {"results": results, "sql": sql}
+
+    return {
+        "results": results,
+        "sql": sql,
+        "processed_question": state.processed_question,
+        "date_processing_info": state.date_processing_info,
+    }
 
 
 def generator_node(state: GraphState) -> dict[str, str]:
@@ -59,24 +84,38 @@ def generator_node(state: GraphState) -> dict[str, str]:
     return {"response": response}
 
 
+def date_processing_node(state: GraphState) -> dict[str, Any]:
+    if state.question is None:
+        raise ValueError("Question cannot be None in date_processing_node")
+    date_info = process_question_dates(state.question)
+    return {
+        "date_processing_info": date_info,
+        "processed_question": date_info["processed_question"],
+    }
+
+
 def ask(question: str, engine: Engine) -> tuple[str, list[dict[str, Any]]]:
     pipeline = StateGraph(GraphState)
 
     pipeline.add_node("validator_node", validator_node)
+    pipeline.add_node("date_processing_node", date_processing_node)
     pipeline.add_node("retriever_node", retriever_node)
     pipeline.add_node("generator_node", generator_node)
     pipeline.add_node("refusal_node", refusal_node)
 
     pipeline.add_edge(START, "validator_node")
     pipeline.add_conditional_edges("validator_node", retriever_backstop)
-    pipeline.add_edge("retriever_node", "generator_node")
     pipeline.add_edge("refusal_node", END)
+    pipeline.add_edge("validator_node", "date_processing_node")
+    pipeline.add_edge("date_processing_node", "retriever_node")
+    pipeline.add_edge("retriever_node", "generator_node")
     pipeline.add_edge("generator_node", END)
 
     rag_pipeline = pipeline.compile()
 
     inputs = {"question": question, "engine": engine}
     state_history = []
+
     for event in rag_pipeline.stream(inputs, stream_mode="debug"):
         state_history.append(event)
 

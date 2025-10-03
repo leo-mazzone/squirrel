@@ -1,49 +1,58 @@
-# CLAUDE.md
+# Claude Code Configuration for Squirrel
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project Overview
+Squirrel is a natural language to SQL query system using LLMs and directed acyclic graphs. It processes user questions, generates and refines SQL queries, and provides natural language responses.
 
-## Development Commands
+## Technology Stack
+- **Language**: Python 3.13+
+- **Package Manager**: uv
+- **LLM Framework**: LangChain + LangGraph
+- **Database**: SQLAlchemy (currently using SQLite with chinook.db for testing)
+- **Task Runner**: just
+- **Linting/Formatting**: ruff
+- **Type Checking**: pyright
+- **Testing**: pytest
+- **Pre-commit**: Configured with ruff and typecheck hooks
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management and [just](https://github.com/casey/just/) for task automation.
+## Development Workflow
 
-- **Format and lint**: `just format` (runs `uv run ruff format .` and `uv run ruff check . --fix`)
-- **Type checking**: `just typecheck` (runs `uv run pyright`)
-- **Run tests**: `uv run pytest`
-- **Run example**: `python example.py` (requires `GEMINI_API_KEY` environment variable)
+### Formatting & Linting
+- **ALWAYS run `just format` after making code changes** 
+- This runs `ruff format` and `ruff check --fix`
+- Line length limit: 88 characters
+- Fix any formatting violations before completing tasks
 
-Pre-commit hooks are configured to run formatting, linting, and type checking automatically.
+### Type Checking
+- Run `just typecheck` to perform static type analysis with pyright
+- Ensure type safety before completing tasks
 
-## Architecture
+### Testing
+- Run tests with `pytest` or `uv run pytest`
+- Key test files:
+  - `test/test_basic.py` - Basic functionality tests
+  - `test/test_dates.py` - Date processing tests
+- Test database: `chinook.db` (SQLite)
 
-Squirrel is a natural language to SQL query system built as a LangGraph DAG (Directed Acyclic Graph) with three main processing stages:
+### Pre-commit Hooks
+- Pre-commit is configured to run formatting and type checking
+- Install with `pre-commit install`
 
-### Core Components
+## Code Structure
+- `src/squirrel/` - Main package
+  - `dag.py` - Main DAG implementation for query processing
+  - `dates.py` - Date expression processing
+  - `db.py` - Database utilities
+  - `prompts.py` - LLM prompts and parsing
 
-**State Management (`dag.py:GraphState`)**
-- Tracks engine, question, validation status, SQL query, results, and response throughout the pipeline
+## Key Commands
+- `just format` - Format and lint code
+- `just typecheck` - Run type checker
+- `pytest` - Run tests
+- `uv run [command]` - Run commands in project environment
 
-**Processing Nodes (`dag.py`)**
-1. **Validator Node**: Uses LLM to check if question can be answered from database schema
-2. **Retriever Node**: Generates SQL query from question and database context
-3. **Generator Node**: Creates natural language response from query results
-4. **Refusal Node**: Handles cases where question cannot be answered
-
-**Database Interface (`db.py`)**
-- `describe_db()`: Extracts and formats database schema as JSON for LLM context
-- `results_as_str()`: Executes SQL and formats results using Polars
-
-**LLM Chains (`prompts.py`)**
-- Three specialized chains using Google Gemini 2.0 Flash model
-- Requires `GEMINI_API_KEY` environment variable
-- Each chain has specific prompts for validation, SQL generation, and response generation
-
-### Data Flow
-Question → Validation → (Valid?) → SQL Generation → Query Execution → Response Generation → Final Answer
-
-The system uses SQLAlchemy engines and includes a sample Chinook database (`chinook.db`) for testing.
-
-## Key Dependencies
-- **LangChain/LangGraph**: LLM orchestration and graph execution
-- **SQLAlchemy**: Database connections and inspection
-- **Polars**: Fast query result processing
-- **Google GenAI**: LLM provider (requires API key)
+## Important Notes
+- Always ensure formatting passes before completing tasks
+- Follow existing code patterns and conventions
+- Use type hints consistently
+- Test date processing functionality thoroughly
+- The project uses uv for dependency management
