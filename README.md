@@ -1,7 +1,7 @@
 # Squirrel
 
 > [!IMPORTANT]  
-> This is currently a personal project for learning and development. Everything on this page is aspirational. The code will be incomplete and unstable until this notice disappears.
+> This is currently a personal project for learning and development. Everything on this page is aspirational. The code will be incomplete and unstable and code quality might suffer due to heavy LLM use - which is actually a core part of this as a learning experiment.
 
 Squirrel lets you query information from a SQL database using natural language.
 
