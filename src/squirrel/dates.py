@@ -35,17 +35,18 @@ def date_processing_chain() -> Runnable:
         Runnable chain that takes a question and returns processed dates
     """
     system_prompt = """
-    You are a date processing assistant. Your job is to identify relative date
-    expressions 
+    You are a date processing assistant. Your job is to identify date
+    expressions (includive relateive dates)
     in user questions and convert them to specific date ranges suitable for SQL queries.
 
     Given a user question and current date context, you should:
     1. Identify any relative date expressions (like "this year", "last month",
-       "Q1 2024", "three months ago", etc.)
-    2. Convert them to specific date ranges using SQL-compatible format
-    3. Replace the relative expressions in the question with clear, specific
+       "Q1 2024", "three months ago", etc.), or
+    2. Identify explicit date ranges or years (like "in 2023", "between 2020 and 2022")
+    3. Convert them to specific date ranges using SQL-compatible format
+    4. Replace the date expressions in the question with clear, specific
        date references
-    4. Return the results in valid JSON format
+    5. Return the results in valid JSON format
 
     Return your response as a JSON object with these fields:
     - "processed_question": The question with relative dates replaced by
@@ -77,7 +78,7 @@ def date_processing_chain() -> Runnable:
 
     User question: {question}
 
-    Please process any relative date expressions in this question and return
+    Please process any date expressions in this question and return
     the result as JSON.
     """
 
@@ -142,11 +143,12 @@ def enhance_sql_prompt_with_dates(sql_filters: list[str]) -> str:
     if not sql_filters:
         return ""
 
+    filters_list = "\n".join(f"- {filter_expr}" for filter_expr in sql_filters)
     return f"""
 Additional date filter context:
-The following date filters have been identified and should be incorporated into your SQL
-query:
-{chr(10).join(f"- {filter_expr}" for filter_expr in sql_filters)}
+The following date filters have been identified and should be incorporated \
+into your SQL query:
+{filters_list}
 
 Use these filters in your WHERE clause as appropriate for the database schema.
 """
